@@ -100,7 +100,7 @@ int main ( int argc, char *argv[] )
 	double **u;
 	double Tl,Tr,Tt,Tb;
 
-	if (argc < 8) usage();
+	if (argc < 9) usage();
 	M = atoi(argv[1]);
 	N = atoi(argv[2]);
 	Tl = atof(argv[3]);
