@@ -127,7 +127,7 @@ int main ( int argc, char *argv[] )
 	printf ( "  The steady state solution will be written to '%s'.\n", output_file );
 
 	/* Set the boundary values, which don't change.  */
-	initialize_plate(M,N,Tl,Tr,Tb,Tt,u);
+	initialize_plate(M,N,Tl,Tr,Tt,Tb,u);
 	ctime1 = cpu_time ( );
 	int iters;
 	double tol;
