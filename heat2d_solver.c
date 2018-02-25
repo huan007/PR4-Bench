@@ -8,6 +8,7 @@
  * Dirichlet boundary conditions 
  *
  */
+void printGrid(double **u, int M, int N);
 
 /* heat2dSolve 
  * 	M - number of rows (input)
@@ -41,6 +42,7 @@ int heat2dSolve(int M, int N, double eps, int print, double **u, double *tol)
 		/*
 			Initialize copy of "current" row 
 		*/
+		//printGrid(u, M, N);
 		memcpy(rowCurr, u[0], N*sizeof(double));
 		/*
 		Determine the new estimate of the solution at the interior points.
@@ -77,4 +79,17 @@ int heat2dSolve(int M, int N, double eps, int print, double **u, double *tol)
 	free(rowPrev);
 	*tol = diff;
 	return iterations;
+}
+
+void printGrid(double **u, int M, int N)
+{
+	int i, j;
+	for (i = 0; i < M; i++)
+	{
+		for (j = 0; j < N; j++)
+		{
+			printf("%6.2f ", u[i][j]);
+		}
+		printf("\n");
+	}
 }
