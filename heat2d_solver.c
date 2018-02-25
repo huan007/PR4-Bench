@@ -42,7 +42,9 @@ int heat2dSolve(int M, int N, double eps, int print, double **u, double *tol)
 		/*
 			Initialize copy of "current" row 
 		*/
+		//printf("\n");
 		//printGrid(u, M, N);
+		//printf ( "  %8d  %f\n", iterations, diff );
 		memcpy(rowCurr, u[0], N*sizeof(double));
 		/*
 		Determine the new estimate of the solution at the interior points.
@@ -88,7 +90,7 @@ void printGrid(double **u, int M, int N)
 	{
 		for (j = 0; j < N; j++)
 		{
-			printf("%6.2f ", u[i][j]);
+			printf("%6.8f ", u[i][j]);
 		}
 		printf("\n");
 	}

@@ -283,6 +283,8 @@ int heat2dSolvePara(int M, int N, double eps, int printBool, double **threadU, d
 	while ( eps <= globalDiff )
 	{
 		//printf("eps: %6.6f\tglobalDiff: %6.6f\n", eps, globalDiff);
+		//if (rank == 0)
+		//	printf ( "GLOBAL:  %8d  %f\n", iterations, globalDiff );
 		/*
 		* 	Copy phrase, no one write anything
 		*/
@@ -304,19 +306,22 @@ int heat2dSolvePara(int M, int N, double eps, int printBool, double **threadU, d
 				for (i = 0; i < N; i++)
 					threadU[0][i] = u[copyStart-1][i];
 			}
-
 			//Wait for everyone to finish copying before move on to calculation
 			//phase
 		}
-		//printf("Thread %d finished copying phase (%d)\n", rank, iterations);
+		//Copy the first row into rowCurr
+		memcpy(rowCurr, threadU[0], N*sizeof(double));
 		//pthread_mutex_lock(&mutex_print);
 		//printf("-------------Rank %d -----Iteration %d------------\n", rank, iterations);
 		//print(threadU, M, N);
 		//pthread_mutex_unlock(&mutex_print);
+		
+		//Make sure that everyone is ready (copied bottom buffer and first row)
 		barrier(&mutex, &cond, &counter, thread_count, rank);
 		//Reset globalDiff
 		if (rank == 0)
 			globalDiff = 0;
+		barrier(&mutex, &cond, &counter, thread_count, rank);
 		/*
 		Determine the new estimate of the solution at the interior points.
 		The new solution W is the average of north, south, east and west 
@@ -325,14 +330,25 @@ int heat2dSolvePara(int M, int N, double eps, int printBool, double **threadU, d
 		for ( i = 1; i < M - 1; i++ )
 		{
 			/* swap rowPrev and rowCurr pointers. Save the current row */
+			rowTmp = rowPrev; rowPrev=rowCurr; rowCurr=rowTmp;
+			memcpy(rowCurr, threadU[i], N*sizeof(double));
 			for ( j = 1; j < N - 1; j++ )
 			{
-				double temp = threadU[i][j];
-				threadU[i][j] = ( threadU[i-1][j] + threadU[i+1][j] + 
-					threadU[i][j-1] + threadU[i][j+1] ) / 4.0;
-				//printf("Rank(%d) Old: %6.2f\tNew: %6.2f\n", rank, temp, threadU[i][j]);
+				//double temp = threadU[i][j];
+				//threadU[i][j] = ( threadU[i-1][j] + threadU[i+1][j] + 
+				//	threadU[i][j-1] + threadU[i][j+1] ) / 4.0;
+				////printf("Rank(%d) Old: %6.2f\tNew: %6.2f\n", rank, temp, threadU[i][j]);
 	
-				double delta = fabs(temp - threadU[i][j]);
+				//double delta = fabs(temp - threadU[i][j]);
+				//if ( diff < delta ) 
+				//{
+				//	diff = delta; 
+				//}
+
+				threadU[i][j] = (rowPrev[j] + threadU[i+1][j] + 
+					rowCurr[j-1] + rowCurr[j+1] ) / 4.0;
+	
+				double delta = fabs(rowCurr[j] - threadU[i][j]);
 				if ( diff < delta ) 
 				{
 					diff = delta; 
@@ -341,10 +357,13 @@ int heat2dSolvePara(int M, int N, double eps, int printBool, double **threadU, d
 		}
 		iterations++;
 		//Update global differences
-		//printf("globalDiff: %6.6f\t diff: %6.6f\n", globalDiff, diff);
 		pthread_mutex_lock(&mutex_eps);
+		//printf("GlobalDiff:%6.6f \t Diff: %6.6f\n", globalDiff, diff);
 		if (diff > globalDiff)
+		{
+			//printf("globalDiff is now %6.6f\n", diff);
 			globalDiff = diff;
+		}
 		pthread_mutex_unlock(&mutex_eps);
 
 		if ( printBool && iterations == iterations_print )
@@ -470,7 +489,7 @@ void print(double **u, int M, int N)
 	{
 		for (j = 0; j < N; j++)
 		{
-			printf("%6.2f ", u[i][j]);
+			printf("%6.8f ", u[i][j]);
 		}
 		printf("\n");
 	}
