@@ -1,3 +1,9 @@
+/*
+ *	Pthread version of heatmap 2D
+ *	Author: Huan Nguyen
+ *	PID: A12871523
+ *	email: hpn007@ucsd.edu
+ */
 #include <stdio.h>
 #include <stdlib.h>
 #include <pthread.h>
@@ -82,11 +88,17 @@ int main(int argc, char* argv[])
 	Tb = atof(argv[6]);
 	eps = atof(argv[7]);
 	output_file = argv[8];
-	
+
+
+	//Parse number of threads if possible
 	if (argc > 9)
 		thread_count = strtol(argv[9], NULL, 10);
 	else
 		thread_count = 1;
+
+	//error checking
+	if (globalM < 0 || globalN < 0 || thread_count < 0 || eps < 0)
+		usage();
 
 	printf ( "HEAT2D\n" );
 	printf ( "  C version\n" );
@@ -99,7 +111,7 @@ int main(int argc, char* argv[])
 	for (i = 0; i < globalM; i ++) {
 		u[i] = (double *) malloc(globalN  * sizeof(double));
 	}
-	
+
 	//Initialize parameter list
 	paramList = malloc(thread_count * sizeof(Param));
 	itersList = malloc(thread_count * sizeof(int));
@@ -112,7 +124,7 @@ int main(int argc, char* argv[])
 	/* Set the boundary values, which don't change.  */
 	initialize_plate(globalM,globalN,Tl,Tr,Tt,Tb,u);
 	printf(" Done!\n");
-	
+
 	//Creating threads
 	thread_handles = malloc (thread_count * sizeof(pthread_t));
 	int iters = 0;
@@ -139,10 +151,13 @@ int main(int argc, char* argv[])
 		//Determine the position
 		start = end;
 		end += step;	//Increment end
-		if (thread_count == 1)
+		if (thread_count == 1)		//If there are only one thread
 		{
 			param->position = WHOLE;
 			threadU = u;
+			threadM = globalM;
+			start = 0;
+			end = globalM;
 		}
 
 		if (start == 0 && thread_count > 1)
@@ -157,7 +172,7 @@ int main(int argc, char* argv[])
 				threadU[i] = u[j];
 			//Create additional buffer row at the bottom
 			threadU[i] = (double *) malloc(globalN  * sizeof(double));
-			
+
 		}
 
 
@@ -199,9 +214,11 @@ int main(int argc, char* argv[])
 		param-> copyStart = start;
 		param-> copyEnd = end;
 		printf("\n");
+
 		//printf("Thread #%d\tPosition %d\tSize: %d\tStart :%d\tEnd: %d\n",
 		//	thread, param -> position, threadM, param -> copyStart, param -> copyEnd);
 		//print(threadU, threadM, globalN);
+
 		//Variables needed for solve
 		param->M = threadM;
 		param->eps = eps;
@@ -214,7 +231,7 @@ int main(int argc, char* argv[])
 
 	ctime2 = cpu_time ( );
 	ctime = ctime2 - ctime1;
-	
+
 	//Joining threads
 	for (thread = 0; thread < thread_count; thread++)
 		pthread_join(thread_handles[thread], NULL);
@@ -222,9 +239,8 @@ int main(int argc, char* argv[])
 	printf ( "\n  %8d  %f\n", iters, tol );
 	printf ( "\n  Error tolerance achieved.\n" );
 	printf ( "  CPU time = %f\n", ctime );
-	
 
-	free(thread_handles);
+
 
 	/* Write the solution to the output file.  */
 	fp = fopen ( output_file, "w" );
@@ -253,11 +269,11 @@ int main(int argc, char* argv[])
 	for (i = 0; i < globalM; i++)
 		free(u[i]);
 	free(u);
-	
+
 	//Free buffers and pointer maps
 	for (thread = 0; thread < thread_count; thread++)
 	{
-		printf("--------Free thread #%d---------\n", thread);
+		printf("--------Free thread #%ld---------\n", thread);
 		int size = paramList[thread].M;
 		printf("Position: %d\t Size: %d\n", paramList[thread].position, paramList[thread].M);
 		//Free top buffer
@@ -273,12 +289,15 @@ int main(int argc, char* argv[])
 			free(paramList[thread].u);
 	}
 
+	//Free the rest of memory
+	printf("\n");
 	printf("Free paramList\n");
 	free(paramList);
 	printf("Free itersList\n");
 	free(itersList);
 	printf("Free tolsList\n");
 	free(tolList);
+	free(thread_handles);
 	printf("Done\n");
 
 	return 0;
@@ -286,8 +305,14 @@ int main(int argc, char* argv[])
 	//printf("Hello from main thread\n");
 }
 
+/* Modified version of heat2dSolve that utilize multiple threads
+ *	Parameters: M x N matrix with its sizes and epsilon values. Also receive
+ *	positin of the block (where does the block fit into the big picture). Also
+ *	has the starting and ending coordinate of the block (rows)
+ *	Return: number of iterations that it took
+ */
 int heat2dSolvePara(int M, int N, double eps, int printBool, double **threadU, double *tol,
-					int rank, int position, int copyStart, int copyEnd)
+		int rank, int position, int copyStart, int copyEnd)
 {
 
 	int iterations = 0;
@@ -300,7 +325,7 @@ int heat2dSolvePara(int M, int N, double eps, int printBool, double **threadU, d
 
 	rowPrev = calloc(N, sizeof(double));
 	rowCurr = calloc(N, sizeof(double));
-	
+
 	pthread_mutex_lock(&mutex_print);
 	if (printBool) 
 		printf( "\n Iteration  Change\n" );
@@ -308,12 +333,9 @@ int heat2dSolvePara(int M, int N, double eps, int printBool, double **threadU, d
 
 	while ( eps <= globalDiff )
 	{
-		//printf("eps: %6.6f\tglobalDiff: %6.6f\n", eps, globalDiff);
-		//if (rank == 0)
-		//	printf ( "GLOBAL:  %8d  %f\n", iterations, globalDiff );
 		/*
-		* 	Copy phrase, no one write anything
-		*/
+		 * 	Copy phrase, no one write anything
+		 */
 		if (position != WHOLE)
 		{
 			//Copy bottom's buffer
@@ -341,7 +363,7 @@ int heat2dSolvePara(int M, int N, double eps, int printBool, double **threadU, d
 		//printf("-------------Rank %d -----Iteration %d------------\n", rank, iterations);
 		//print(threadU, M, N);
 		//pthread_mutex_unlock(&mutex_print);
-		
+
 		//Make sure that everyone is ready (copied bottom buffer and first row)
 		barrier(&mutex, &cond, &counter, thread_count, rank);
 		//Reset globalDiff
@@ -349,9 +371,9 @@ int heat2dSolvePara(int M, int N, double eps, int printBool, double **threadU, d
 			globalDiff = 0;
 		barrier(&mutex, &cond, &counter, thread_count, rank);
 		/*
-		Determine the new estimate of the solution at the interior points.
-		The new solution W is the average of north, south, east and west 
-		neighbors.  */
+		   Determine the new estimate of the solution at the interior points.
+		   The new solution W is the average of north, south, east and west 
+		   neighbors.  */
 		diff = 0.0;
 		for ( i = 1; i < M - 1; i++ )
 		{
@@ -360,20 +382,9 @@ int heat2dSolvePara(int M, int N, double eps, int printBool, double **threadU, d
 			memcpy(rowCurr, threadU[i], N*sizeof(double));
 			for ( j = 1; j < N - 1; j++ )
 			{
-				//double temp = threadU[i][j];
-				//threadU[i][j] = ( threadU[i-1][j] + threadU[i+1][j] + 
-				//	threadU[i][j-1] + threadU[i][j+1] ) / 4.0;
-				////printf("Rank(%d) Old: %6.2f\tNew: %6.2f\n", rank, temp, threadU[i][j]);
-	
-				//double delta = fabs(temp - threadU[i][j]);
-				//if ( diff < delta ) 
-				//{
-				//	diff = delta; 
-				//}
-
 				threadU[i][j] = (rowPrev[j] + threadU[i+1][j] + 
-					rowCurr[j-1] + rowCurr[j+1] ) / 4.0;
-	
+						rowCurr[j-1] + rowCurr[j+1] ) / 4.0;
+
 				double delta = fabs(rowCurr[j] - threadU[i][j]);
 				if ( diff < delta ) 
 				{
@@ -384,10 +395,8 @@ int heat2dSolvePara(int M, int N, double eps, int printBool, double **threadU, d
 		iterations++;
 		//Update global differences
 		pthread_mutex_lock(&mutex_eps);
-		//printf("GlobalDiff:%6.6f \t Diff: %6.6f\n", globalDiff, diff);
 		if (diff > globalDiff)
 		{
-			//printf("globalDiff is now %6.6f\n", diff);
 			globalDiff = diff;
 		}
 		pthread_mutex_unlock(&mutex_eps);
@@ -397,8 +406,6 @@ int heat2dSolvePara(int M, int N, double eps, int printBool, double **threadU, d
 			printf ( "  %8d  %f\n", iterations, diff );
 			iterations_print *= 2;
 		}
-		//printf("Thread %d finished computation phase (%d)\n", rank, iterations);
-		//printf("Rank(%d)\teps: %4.6f diff: %4.6f\n", rank, eps, diff); 
 		barrier(&mutex, &cond, &counter, thread_count, rank);
 	} 
 	/* memory cleanup */
@@ -407,16 +414,10 @@ int heat2dSolvePara(int M, int N, double eps, int printBool, double **threadU, d
 	*tol = diff;
 	return iterations;
 }
-
-void *Hello(void* rank)
-{
-	long my_rank = (long) rank;
-
-	printf("Hello from thread %ld of %d\n", my_rank, thread_count);
-
-	return NULL;
-}
-
+/* 
+ *	Dummy method for starting threads. This method will parse all the parameters
+ *	passed into the thread and pass it onto heat2dSolvePara()
+ */
 void *solve(void* param)
 {
 	//printf("Parsing parameters...\n");
@@ -436,25 +437,24 @@ void *solve(void* param)
 
 	//printf("M: %d\nN: %d\neps: %f\nprint: %d\nu: %p\ntol: %p\n", M, N, eps, print, u, tol);
 	heat2dSolvePara(M, N, eps, print, u, tol, rank, position, copyStart, copyEnd);
-	
-	//int heat2dSolve(int M, int N, double eps, int print, double **u, double *tol)
+
 }
 
 
 /******************************************************************************/
-/******************************************************************************/
 /*
 Purpose:
-	CPU_TIME returns the current reading on the CPU clock.
+CPU_TIME returns the current reading on the CPU clock.
 Licensing:
-	This code is distributed under the GNU LGPL license. 
+This code is distributed under the GNU LGPL license. 
 Modified:
-	06 June 2005
+06 June 2005
 Author:
-	John Burkardt
+John Burkardt
 Parameters:
-	Output, double CPU_TIME, the current reading of the CPU clock, in seconds.
+Output, double CPU_TIME, the current reading of the CPU clock, in seconds.
 */
+/******************************************************************************/
 double cpu_time ( void )
 {
 	double value;
@@ -496,8 +496,8 @@ void initialize_plate(int M, int N, double Tl, double Tr, double Tt,
 	}
 	mean = mean / ( double ) ( 2 * M + 2 * N - 4 );
 	/* 
-	   Initialize the interior solution to the mean value.
-	   */
+	 * 	Initialize the interior solution to the mean value.
+	 */
 	for ( i = 1; i < M - 1; i++ )
 	{
 		for ( j = 1; j < N - 1; j++ )
@@ -508,6 +508,10 @@ void initialize_plate(int M, int N, double Tl, double Tr, double Tt,
 	return;
 }
 
+/*
+ * Print out the specified grid
+ * Paramters: Pointer to the grid with its sizes
+ */
 void print(double **u, int M, int N)
 {
 	int i, j;
