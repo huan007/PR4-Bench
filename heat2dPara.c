@@ -43,7 +43,6 @@ int t_count;
 
 //State variable
 double globalDiff;
-pthread_mutex_t* mutex_row;
 pthread_mutex_t mutex_eps;
 pthread_mutex_t mutex_print;
 
@@ -106,7 +105,6 @@ int main(int argc, char* argv[])
 	itersList = malloc(thread_count * sizeof(int));
 	tolList = malloc(thread_count * sizeof(double));
 
-
 	//Set globalDiff
 	globalDiff = 2.0 * eps;
 
@@ -120,7 +118,7 @@ int main(int argc, char* argv[])
 	int iters = 0;
 	double tol = 0;
 	counter = 0;
-	mutex_row = malloc (globalM * sizeof(pthread_mutex_t));
+
 
 	//Temporary variables to divide work
 	int start = 0;
@@ -255,6 +253,34 @@ int main(int argc, char* argv[])
 	for (i = 0; i < globalM; i++)
 		free(u[i]);
 	free(u);
+	
+	//Free buffers and pointer maps
+	for (thread = 0; thread < thread_count; thread++)
+	{
+		printf("--------Free thread #%d---------\n", thread);
+		int size = paramList[thread].M;
+		printf("Position: %d\t Size: %d\n", paramList[thread].position, paramList[thread].M);
+		//Free top buffer
+		if (paramList[thread].position == TOP || paramList[thread].position == MID)
+			free(paramList[thread].u[size-1]);
+		//Free bottom buffer
+		if (paramList[thread].position == BOT || paramList[thread].position == MID)
+			free(paramList[thread].u[0]);
+
+		printf("Freeing threadU\n");
+		//Free pointer map
+		if (paramList[thread].position != WHOLE)
+			free(paramList[thread].u);
+	}
+
+	printf("Free paramList\n");
+	free(paramList);
+	printf("Free itersList\n");
+	free(itersList);
+	printf("Free tolsList\n");
+	free(tolList);
+	printf("Done\n");
+
 	return 0;
 
 	//printf("Hello from main thread\n");
