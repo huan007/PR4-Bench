@@ -1,0 +1,5 @@
+
+Command used:
+
+ ./heat2d 2000 2000 100 10 50 50 0.0005 heat2d2K.log 4
+
