@@ -229,12 +229,13 @@ int main(int argc, char* argv[])
 		pthread_create(&thread_handles[thread], NULL, solve, (void*) param);
 	}
 
-	ctime2 = cpu_time ( );
-	ctime = ctime2 - ctime1;
 
 	//Joining threads
 	for (thread = 0; thread < thread_count; thread++)
 		pthread_join(thread_handles[thread], NULL);
+
+	ctime2 = cpu_time ( );
+	ctime = ctime2 - ctime1;
 
 	printf ( "\n  %8d  %f\n", iters, tol );
 	printf ( "\n  Error tolerance achieved.\n" );
@@ -327,7 +328,7 @@ int heat2dSolvePara(int M, int N, double eps, int printBool, double **threadU, d
 	rowCurr = calloc(N, sizeof(double));
 
 	pthread_mutex_lock(&mutex_print);
-	if (printBool) 
+	if (printBool && rank == 0) 
 		printf( "\n Iteration  Change\n" );
 	pthread_mutex_unlock(&mutex_print);
 
@@ -403,7 +404,8 @@ int heat2dSolvePara(int M, int N, double eps, int printBool, double **threadU, d
 
 		if ( printBool && iterations == iterations_print )
 		{
-			printf ( "  %8d  %f\n", iterations, diff );
+			if (rank == 0)
+				printf ( "  %8d  %f\n", iterations, diff );
 			iterations_print *= 2;
 		}
 		barrier(&mutex, &cond, &counter, thread_count, rank);
