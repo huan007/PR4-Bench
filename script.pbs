@@ -1,0 +1,18 @@
+#! /bin/sh
+#PBS -q home
+#PBS -N serial
+#PBS -l nodes=1:ppn=4
+#PBS -l walltime=1:00:00
+#PBS -o helloworld-huan.out
+#PBS -e helloworld-huan.err
+#PBS -V
+#PBS -M hpn007@ucsd.edu
+#PBS -m abe
+#PBS -A ucsd-train141
+cd /home/ucsd-train141/clone/PR4-huan007/
+file = "./output/output"
+
+for i in {200..4000..200}
+do
+	time ./heat2dSerial $i $i 100 100 50 69 0.001 ./serial-output/serial-$i.out > ./serial-output/time-$i
+done
