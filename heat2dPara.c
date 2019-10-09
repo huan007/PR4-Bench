@@ -1,7 +1,6 @@
 /*
  *	Pthread version of heatmap 2D
  *	Author: Huan Nguyen
- *	PID: A12871523
  *	email: hpn007@ucsd.edu
  */
 #include <stdio.h>
@@ -302,8 +301,6 @@ int main(int argc, char* argv[])
 	printf("Done\n");
 
 	return 0;
-
-	//printf("Hello from main thread\n");
 }
 
 /* Modified version of heat2dSolve that utilize multiple threads
@@ -360,10 +357,6 @@ int heat2dSolvePara(int M, int N, double eps, int printBool, double **threadU, d
 		}
 		//Copy the first row into rowCurr
 		memcpy(rowCurr, threadU[0], N*sizeof(double));
-		//pthread_mutex_lock(&mutex_print);
-		//printf("-------------Rank %d -----Iteration %d------------\n", rank, iterations);
-		//print(threadU, M, N);
-		//pthread_mutex_unlock(&mutex_print);
 
 		//Make sure that everyone is ready (copied bottom buffer and first row)
 		barrier(&mutex, &cond, &counter, thread_count, rank);
@@ -374,7 +367,8 @@ int heat2dSolvePara(int M, int N, double eps, int printBool, double **threadU, d
 		/*
 		   Determine the new estimate of the solution at the interior points.
 		   The new solution W is the average of north, south, east and west 
-		   neighbors.  */
+		   neighbors.  
+        */
 		diff = 0.0;
 		for ( i = 1; i < M - 1; i++ )
 		{

@@ -42,8 +42,6 @@ int heat2dSolve(int M, int N, double eps, int print, double **u, double *tol)
 		/*
 			Initialize copy of "current" row 
 		*/
-		//printf("\n");
-		//printGrid(u, M, N);
 		//printf ( "  %8d  %f\n", iterations, diff );
 		memcpy(rowCurr, u[0], N*sizeof(double));
 		/*

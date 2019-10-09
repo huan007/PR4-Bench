@@ -1,7 +1,6 @@
 /*
  *	Tester for barrier
  *	Author: Huan Nguyen
- *	PID: A12871523
  *	email: hpn007@ucsd.edu
  */
 #include <pthread.h>
