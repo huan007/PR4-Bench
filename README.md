@@ -3,7 +3,7 @@ CSE 160 PR4 - Heat Map Simulation
 
 Description
 -----
-
+Heatmap Simulation Program implemented with Pthread to utilize full system resource
 
 Install & Requirements
 -----
